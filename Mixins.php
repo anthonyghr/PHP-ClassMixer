@@ -1,0 +1,220 @@
+<?php
+
+/*******************************************************************************
+ * Useful Mixins
+ *
+ * Authors:: anthony.gallagher@wellspringworldwide.com
+ *
+ * Copyright:: Copyright 2009, Wellspring Worldwide, LLC Inc. All Rights Reserved.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ ******************************************************************************/
+
+/*******************************************************************************
+ * Uses global cutpoints to log calls when entering and/or exiting methods.
+ ******************************************************************************/
+abstract class TracerMixin {
+    public static $trace = false;
+    
+    function BEFORE_ALL() {
+        if (self::$trace) {
+            $args = func_get_args();
+            $method = $args[0];
+            $args = array_slice($args, 1);
+            error_log("Entering $method with arguments " . print_r($args, true));
+        }
+    }
+
+    function AFTER_ALL() {
+        if (self::$trace) {
+            $args = func_get_args();
+            $num_args = func_num_args();
+            $method = $args[0];
+            $retval = $args[$num_args-1];
+            error_log("Leaving $method with return value " . print_r($retval, true));
+        }
+    }
+}
+
+/*******************************************************************************
+ * Enables the dynamic addition of new methods or expander classes with
+ *    extra functionality after the class has been defined.
+ ******************************************************************************/
+class ExpandableClassException extends Exception {}
+
+abstract class ExpandableClassMixin {
+    static protected $dynamic_methods = array();
+    static protected $dynamic_mixins = array();
+
+    /**
+     * Helper method to generate an argument string to eval()
+     * 
+     * @param <type> $num_args
+     * @return <type>
+     */
+    protected static function makeArgStr($num_args) {
+        $m_args = array();
+        for ($i = 0; $i < $num_args; $i++) {
+            $m_args[] = "\$args[$i]";
+        }
+        return implode(', ', $m_args);
+    }
+
+    protected static function getClassHierarchy($base_object) {
+        $ancestry = array();
+        $klass = is_object($base_object) ? get_class($base_object) : $base_object;
+        $ancestry[] = $klass;
+        while (($klass = get_parent_class($klass)) !== false) {
+            $ancestry[] = $klass;
+        }
+        return $ancestry;
+    }
+
+    /***************************************************************************
+     * Dynamic method registration
+     **************************************************************************/
+    /**
+     * Check if a method has been dynamically added to a class
+     * @param <type> $klass
+     * @param <type> $method
+     * @return <type>
+     */
+    protected static function isMethodRegistered($klass, $method) {
+        if (!array_key_exists($klass, self::$dynamic_methods)) {
+            self::$dynamic_methods[$klass] = array();
+        }
+        return isset(self::$dynamic_methods[$klass][$method]);
+    }
+
+    /**
+     * Dynamically add a method from a class. Methods should be functions with
+     * a signature of:
+     * function NEW_ClassName__MethodName($obj, ...) { ... }
+     *    where $obj is the receiver for the $this pointer.
+     * @param <type> $klass
+     * @param <type> $method
+     */
+    public static function registerMethod($klass, $method) {
+        //The name of the function to be called
+        if (!self::isMethodRegistered($klass, $method)) {
+            $dynamic_method_name = "NEW_".$klass."__".$method;
+            self::$dynamic_methods[$klass][$method] = $dynamic_method_name;
+        }
+    }
+
+    /**
+     * Dynamically remove a method from a class
+     * @param <type> $klass
+     * @param <type> $method
+     */
+    public static function unregisterMethod($klass, $method) {
+        if (self::isMethodRegistered($klass, $method)) {
+            unset(self::$dynamic_methods[$klass][$method]);
+        }
+    }
+
+    /***************************************************************************
+     * Dynamic mixin registration
+     **************************************************************************/
+    /**
+     * Get the expanders for a given class
+     * 
+     * @param <type> $klass
+     * @return <type>
+     */
+    protected static function getExpanders($klass) {
+        if (!array_key_exists($klass, self::$dynamic_mixins)) {
+            self::$dynamic_mixins[$klass] = array();
+        }
+        return self::$dynamic_mixins[$klass];
+    }
+
+    /**
+     * Check if an expander mixin has been dynamically added to a class
+     *
+     * @param <type> $klass
+     * @param <type> $expander
+     * @return <type>
+     */
+    protected static function isExpanderRegistered($klass, $expander) {
+        return in_array($expander, self::getExpanders($klass));
+    }
+
+    /**
+     * Dynamically add a mixin to a class.
+     *
+     * @param <type> $klass
+     * @param <type> $expander
+     */
+    public static function registerExpander($klass, $expander) {
+        //The name of the function to be called
+        if (!self::isExpanderRegistered($klass, $expander)) {
+            self::$dynamic_mixins[$klass][] = $expander;
+        }
+    }
+
+    /**
+     * Dynamically remove a mixin from a class
+     *
+     * @param <type> $klass
+     * @param <type> $expander
+     */
+    public static function unregisterExpanders($klass, $expander) {
+        if (self::isExpanderRegistered($klass, $expander)) {
+            self::$dynamic_mixins[$klass] =
+                array_values(array_diff(self::$dynamic_mixins[$klass], array($expander)));
+        }
+    }
+
+    /**
+     * Here look for expander classes that may define the method called on the object
+     * 
+     * @param <type> $method
+     * @param <type> $args
+     * @return <type>
+     */
+    public function __call($method, $args) {
+        //Get the list of classes we need to check for expander registration
+        $klasses = self::getClassHierarchy($this);
+
+        foreach ($klasses as $klass) {
+            //Check if this is a dynamically added method, if so call the method
+            if (self::isMethodRegistered($klass, $method)) {
+                //A dynamically added method
+                array_unshift($args, $this);
+                $dynamic_method_name = "NEW_".$klass."__".$method;
+                eval("\$result =& $dynamic_method_name(".self::makeArgStr(count($args)).");");
+                return $result;
+            }
+
+            //Get the expanders for the class
+            $expanders = self::getExpanders($klass);
+            foreach ($expanders as $expander) {
+                //Get the methods of the expander class
+                $methods = get_class_methods($expander);
+                //Found the method! Call it and return the result!
+                if (in_array($method, $methods)) {
+                    eval("\$result =& $expander::$method(".self::makeArgStr(count($args)).");");
+                    return $result;
+                }
+            }
+        }
+
+        //The method was not found...Trigger an exception.
+        throw new ExpandableClassException('Call to undefined method '.get_class($this).'::'.$method);
+    }
+}
+
+/**
+ * Just a pseudonym for the ExpandableClassMixin that we can inherit from
+ */
+abstract class ExpandableClass extends ExpandableClassMixin {}
