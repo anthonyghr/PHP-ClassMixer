@@ -88,11 +88,28 @@ abstract class CM_Utils {
 /*******************************************************************************
  * Collection of combinator functions for the ClassMixer
  ******************************************************************************/
-/**
- * A do-nothing function. Can be used to as a 'combinator' to
- * combine several functions that need to be called sequentially.
- */
-function execute() {}
+abstract class CM_Combinators {
+    /**
+     * A do-nothing function. Can be used to as a 'combinator' to
+     * combine several functions that need to be called sequentially.
+     */
+    public static function execute() {}
+
+    /**
+     * This function will return the last of the result values returned by
+     *    the base classes of a mixed class
+     *
+     * @return <type> Last base class result
+     */
+    public static function last() {
+        $args = func_get_args();
+        if (!empty($args)) {
+            $num_args = func_num_args();
+            return $args[$num_args-1];
+        }
+        return null;
+    }
+}
 
 
 
@@ -680,7 +697,7 @@ abstract class ClassMixer {
         foreach ($before_cutpoints as $bc) {
             $bm = 'BEFORE_'.$bc;
             if (!array_key_exists($bm, $combinators)) {
-                $combinators[$bm] = 'execute';
+                $combinators[$bm] = 'CM_Combinators::execute';
             }
         }
         if ($after_cutpoints === true) {
@@ -690,7 +707,7 @@ abstract class ClassMixer {
         foreach ($after_cutpoints as $ac) {
             $bm = 'AFTER_'.$ac;
             if (!array_key_exists($bm, $combinators)) {
-                $combinators[$bm] = 'execute';
+                $combinators[$bm] = 'CM_Combinators::execute';
             }
         }
 
