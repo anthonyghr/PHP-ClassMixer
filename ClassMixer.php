@@ -49,40 +49,45 @@
 
 
 /*******************************************************************************
- * Helper routines.
+ * Collection of helper functions for the ClassMixer
  ******************************************************************************/
-/**
- * Computes whether the system has the minimum required PHP version.
- * 
- * @param string $min_version_str
- * @return boolean
- */
-function php_min_version($min_version_str)
-{
-    //Get the minimum version desired, and the PHP version of the system
-    $min_version = explode('.', $min_version_str);
-    $current_version = explode('.', PHP_VERSION);
+abstract class CM_Utils {
+    /**
+     * Computes whether the system has the minimum required PHP version.
+     *
+     * @param string $min_version_str
+     * @return boolean
+     */
+    public static function php_min_version($min_version_str)
+    {
+        //Get the minimum version desired, and the PHP version of the system
+        $min_version = explode('.', $min_version_str);
+        $current_version = explode('.', PHP_VERSION);
 
-    //Figure out if the system meets the minimum version
-    if ($current_version[0] > $min_version[0]) {
-        return true;
-    }
-    elseif ($current_version[0] == $min_version[0]) {
-        if (empty($min_version[1]) || $min_version[1] == '*' ||
-            $current_version[1] > $min_version[1]) {
+        //Figure out if the system meets the minimum version
+        if ($current_version[0] > $min_version[0]) {
             return true;
         }
-        elseif ($current_version[1] == $min_version[1]) {
-            if (empty($min_version[2]) || $min_version[2] == '*' ||
-                $current_version[2] >= $min_version[2]) {
+        elseif ($current_version[0] == $min_version[0]) {
+            if (empty($min_version[1]) || $min_version[1] == '*' ||
+                $current_version[1] > $min_version[1]) {
                 return true;
             }
+            elseif ($current_version[1] == $min_version[1]) {
+                if (empty($min_version[2]) || $min_version[2] == '*' ||
+                    $current_version[2] >= $min_version[2]) {
+                    return true;
+                }
+            }
         }
-    }
 
-    return false;
+        return false;
+    }
 }
 
+/*******************************************************************************
+ * Collection of combinator functions for the ClassMixer
+ ******************************************************************************/
 /**
  * A do-nothing function. Can be used to as a 'combinator' to
  * combine several functions that need to be called sequentially.
@@ -522,7 +527,7 @@ abstract class ClassMixer {
      * @return array List of methods eligible for mixing
      */
     private static function available_base_class_methods($klass, $is_parent=false) {
-        $php5_available = php_min_version('5');
+        $php5_available = CM_Utils::php_min_version('5');
 
         //Obtain the list of mixable methods
         if ($php5_available) {
@@ -560,7 +565,7 @@ abstract class ClassMixer {
      */
     private static function form_class_method($new_class, $method, $bases, $combinators=array(),
                                               $before_cutpoint=false, $after_cutpoint=false) {
-        $php5_available = php_min_version('5');
+        $php5_available = CM_Utils::php_min_version('5');
         if ($php5_available) {
             return self::form_class_method5($new_class, $method, $bases, $combinators,
                                             $before_cutpoint, $after_cutpoint);
@@ -601,7 +606,7 @@ abstract class ClassMixer {
     public static function form_mixed_class($new_class, $base, $mixins, $combinators=array(),
                                             $before_cutpoints=array(), $after_cutpoints=array()) {
         //Check for PHP version
-        if (!php_min_version('4.2')) {
+        if (!CM_Utils::php_min_version('4.2')) {
             throw Exception('ClassMixer requires PHP 4.2 or above');
         }
 
