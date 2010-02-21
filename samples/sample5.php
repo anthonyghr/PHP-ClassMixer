@@ -93,3 +93,11 @@ ClassMixer::create_mixed_class('Person', 'BasePerson',
 $p = new Person('Joe', 'Doe');
 $p->greet('Jane');
 $p->adieu('Jane');
+
+//---Resulting Output---
+//I am about to greet Jane
+//Hi, Jane. My name is Joe Doe
+//I have greeted Jane
+//I am about to bid adieu to Jane
+//Good bye, Jane
+//I have bidded adieu to Jane
