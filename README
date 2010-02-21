@@ -1,0 +1,53 @@
+/*******************************************************************************
+ * PHP ClassMixer
+ *
+ * Authors:: anthony.gallagher@wellspringworldwide.com
+ *
+ * Copyright:: Copyright 2009, Wellspring Worldwide, LLC Inc. All Rights Reserved.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *
+ *
+ * Description:
+ * ===========
+ * ClassMixer was inspired by the 'Mixins for PHP' article
+ * at http://www.advogato.org/article/470.html
+ * and the Common Lisp Object System (CLOS).
+ ******************************************************************************/
+
+PHP ClassMixer is a small, but powerful utility to enable the use of multiple inheritance
+and a form of Aspect-Oriented Programming (AOP) in PHP.
+It grew out of a sense of frustration with some of the limitations imposed by the PHP language,
+and a desire to more closely adhere to the Don't Repeat Yourself (DRY) software 
+engineering principle. 
+ClassMixer has allowed Wellspring engineers to significantly decrease code duplication
+throughout our codebase by encapsulating repeated patterns found in several of our classes 
+into reusable mixins, reducing the lines of code in of many our classes by over 50%.
+
+As its name implies, ClassMixer is a utility that 'mixes' a set of 'parent' classes, resulting in
+a 'child' class that has all the attributes and methods of the parents. In addition, ClassMixer
+provides the ability to create 'before' and 'after' methods. These methods are similar to
+pointcuts in AOP, allowing the interjection of code at the beginning (before) or the end (after)
+of a method execution.
+
+Installation
+============
+Installing ClassMixer is trivial. Simply copy the ClassMixer.php file to the directory of your choice,
+and include/require it.
+
+Requirements
+============
+To make use of the complete feature set of ClassMixer, PHP 5.0 or above must be installed on the system.
+However, ClassMixer is still functional with a limited set of features using PHP 4.2 or above.
+
+
+
