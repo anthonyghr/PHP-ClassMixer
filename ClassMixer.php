@@ -242,8 +242,8 @@ abstract class ClassMixer {
      * @param string $method
      * @param array $bases
      * @param array $combinators
-     * @param array $before_cutpoint
-     * @param array $after_cutpoint
+     * @param boolean $before_cutpoint
+     * @param boolean $after_cutpoint
      * @return string Generated code for a method of the mixed class.
      */
     private static function form_class_method5($new_class, $method, $bases, $combinators=array(),
@@ -328,6 +328,36 @@ abstract class ClassMixer {
         return $func_code;
     }
 
+    /**
+     * Generate a string with the variable definitions for the class
+     *
+     * @param array $mixins
+     * @return string String of variable definitions
+     */
+    private static function form_class_variables5($mixins) {
+        $pub_vars = array();
+        $pub_vars['__mixer_var'] = 'static $__mixer_var;';
+        foreach ($mixins as $mixin) {
+            foreach(get_class_vars($mixin) as $pub_var => $val) {
+                //Already created, continue...
+                if (isset($pub_vars[$pub_var])) {
+                    continue;
+                }
+                //Create the class variable
+                if (is_null($val)) {
+                    //No associated value, just add the class variable.
+                    $pub_vars[$pub_var] = "var \$$pub_var;";
+                }
+                else {
+                    //There is an associated value, define the class variable and copy the value.
+                    $pub_vars[$pub_var] = "var \$$pub_var = ".var_export($val, true).";";
+                }
+            }
+        }
+        //Return the string of variables
+        return implode("\n\t", $pub_vars);
+    }
+
     /***************************************************************************
      * PHP 4.2+ mixed method creation routines.
      **************************************************************************/
@@ -366,9 +396,9 @@ abstract class ClassMixer {
      * Generates code to be inserted in a generated method of the mixed class
      * that calls the AFTER cutpoint of this generated method, if any.
      *
-     * @param <type> $new_class
-     * @param <type> $method
-     * @return <type>
+     * @param string $new_class
+     * @param string $method
+     * @return string
      */
     private static function form_after_cutpoint_call4($new_class, $method) {
         $cutpoint_code = "
@@ -395,8 +425,8 @@ abstract class ClassMixer {
      * Form a string with the argument list for the methods called in mixer functions.
      * Needs to be public, because it is called from the mixed method.
      *
-     * @param <type> $args
-     * @return <type>
+     * @param array $args
+     * @return string
      */
     public static function form_method_argument_list4($args) {
         $argStrArr = array();
@@ -415,13 +445,13 @@ abstract class ClassMixer {
      * Methods that accept reference variables are problematic. The mixed method loses
      * the reference, passing all arguments by value.
      *
-     * @param <type> $new_class
-     * @param <type> $method
-     * @param <type> $bases
-     * @param <type> $combinators
-     * @param <type> $before_cutpoint
-     * @param <type> $after_cutpoint
-     * @return <type>
+     * @param string $new_class
+     * @param string $method
+     * @param array $bases
+     * @param array $combinators
+     * @param boolean $before_cutpoint
+     * @param boolean $after_cutpoint
+     * @return string Generated code for a method of the mixed class.
      */
     private static function form_class_method4($new_class, $method, $bases, $combinators=array(),
                                                $before_cutpoint=false, $after_cutpoint=false) {
@@ -482,6 +512,35 @@ abstract class ClassMixer {
             }";
         }
         return $func_code;
+    }
+
+    /**
+     * Generate a string with the variable definitions for the class
+     *
+     * @param array $mixins
+     * @return string String of variable definitions
+     */
+    private static function form_class_variables4($mixins) {
+        $pub_vars = array();
+        foreach ($mixins as $mixin) {
+            foreach(get_class_vars($mixin) as $pub_var => $val) {
+                //Already created, continue...
+                if (isset($pub_vars[$pub_var])) {
+                    continue;
+                }
+                //Create the class variable
+                if (is_null($val)) {
+                    //No associated value, just add the class variable.
+                    $pub_vars[$pub_var] = "var \$$pub_var;";
+                }
+                else {
+                    //There is an associated value, define the class variable and copy the value.
+                    $pub_vars[$pub_var] = "var \$$pub_var = ".var_export($val, true).";";
+                }
+            }
+        }
+        //Return the string of variables
+        return implode("\n\t", $pub_vars);
     }
 
     /***************************************************************************
@@ -593,6 +652,22 @@ abstract class ClassMixer {
         }
     }
 
+    /**
+     * Generate a string with the variable definitions for the class
+     *
+     * @param array $mixins
+     * @return string String of variable definitions
+     */
+    private static function form_class_variables($mixins) {
+        $php5_available = CM_Utils::php_min_version('5');
+        if ($php5_available) {
+            return self::form_class_variables5($mixins);
+        }
+        else {
+            return self::form_class_variables4($mixins);
+        }
+    }
+
     /***************************************************************************
      * Mixed class creation routines.
      **************************************************************************/
@@ -642,27 +717,8 @@ abstract class ClassMixer {
             $class_header .= " implements $str_interfaces";
         }
 
-        //Add the mixin variables (unfortunately PHP instrospection only gets public vars...)
-        $pub_vars = array();
-        $pub_vars['__mixer_var'] = 'static $__mixer_var;';
-        foreach ($mixins as $mixin) {
-            foreach(get_class_vars($mixin) as $pub_var => $val) {
-                //Already created, continue...
-                if (isset($pub_vars[$pub_var])) {
-                    continue;
-                }
-                //Create the class variable
-                if (is_null($val)) {
-                    //No associated value, just add the class variable.
-                    $pub_vars[$pub_var] = "var \$$pub_var;";
-                }
-                else {
-                    //There is an associated value, define the class variable and copy the value.
-                    $pub_vars[$pub_var] = "var \$$pub_var = ".var_export($val, true).";";
-                }
-            }
-        }
-        $str_var_code = implode("\n\t", $pub_vars);
+        //Add the mixin variables 
+        $str_var_code = self::form_class_variables($mixins);
 
         //Get the functions
         $funcs = array();

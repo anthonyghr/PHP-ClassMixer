@@ -31,7 +31,7 @@ and a desire to more closely adhere to the Don't Repeat Yourself (DRY) software
 engineering principle. 
 ClassMixer has allowed Wellspring engineers to significantly decrease code duplication
 throughout our codebase by encapsulating repeated patterns found in several of our classes 
-into reusable mixins, reducing the lines of code in of many our classes by over 50%.
+into reusable mixins, reducing the lines of code in many of our classes by over 50%.
 
 As its name implies, ClassMixer is a utility that 'mixes' a set of 'parent' classes, resulting in
 a 'child' class that has all the attributes and methods of the parents. In addition, ClassMixer
