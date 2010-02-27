@@ -335,27 +335,45 @@ abstract class ClassMixer {
      * @return string String of variable definitions
      */
     private static function form_class_variables5($mixins) {
-        $pub_vars = array();
-        $pub_vars['__mixer_var'] = 'static $__mixer_var;';
+        $props_arr = array();
+        $props_arr['__mixer_var'] = 'static $__mixer_var;';
         foreach ($mixins as $mixin) {
-            foreach(get_class_vars($mixin) as $pub_var => $val) {
-                //Already created, continue...
-                if (isset($pub_vars[$pub_var])) {
+            //Get the property array
+            $mixin_ref = new ReflectionClass($mixin);
+            $props = $mixin_ref->getProperties();
+            $prop_defaults = $mixin_ref->getDefaultProperties();
+
+            //Create the property definitions
+            foreach($props as $prop){
+                //Get the property name and value
+                $prop_name = $prop->getName();
+                $prop_value = $prop_defaults[$prop_name];
+
+                //If it is already created, skip...
+                if (isset($props_arr[$prop_name])) {
                     continue;
                 }
-                //Create the class variable
-                if (is_null($val)) {
-                    //No associated value, just add the class variable.
-                    $pub_vars[$pub_var] = "var \$$pub_var;";
+
+                //Disallow private and protected properties
+                if ($prop->isProtected() || $prop->isPrivate()) {
+                    continue;
+                }
+
+                //Check if it is a static property
+                $defvar = $prop->isStatic() ? 'static' : 'var';
+
+                //Create the property
+                if (is_null($prop_value)) {
+                    $props_arr[$prop_name] = "$defvar \$$prop_name;";
                 }
                 else {
-                    //There is an associated value, define the class variable and copy the value.
-                    $pub_vars[$pub_var] = "var \$$pub_var = ".var_export($val, true).";";
+                    $props_arr[$prop_name] = "$defvar \$$prop_name = ".var_export($prop_value, true).";";
                 }
             }
         }
+        
         //Return the string of variables
-        return implode("\n\t", $pub_vars);
+        return implode("\n\t", $props_arr);
     }
 
     /***************************************************************************
@@ -380,13 +398,8 @@ abstract class ClassMixer {
                 }
                 if (in_array('BEFORE_$method', get_class_methods('$new_class'))) {
                     \$ret = null;
-                    $new_class::\$__mixer_var =& \$ret;
 
                     eval('$new_class::BEFORE_$method('.\$arg_str.');');
-
-                    if (!is_null($new_class::\$__mixer_var)) {
-                        return $new_class::\$__mixer_var;
-                    }
                 }
                 ";
         return $cutpoint_code;
@@ -405,11 +418,7 @@ abstract class ClassMixer {
                 //Do after method call
                 \$has_args = (strlen(\$arg_str) > 0);
                 if (in_array('AFTER_$method', get_class_methods('$new_class'))) {
-                    $new_class::\$__mixer_var =& \$ret;
-
                     eval('$new_class::AFTER_$method('.\$arg_str.');');
-
-                    \$ret =& $new_class::\$__mixer_var;
                 }
                 if (in_array('AFTER_ALL', get_class_methods('$new_class'))) {
                     \$aa_arg_str = \$has_args ?
