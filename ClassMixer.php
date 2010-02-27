@@ -354,20 +354,28 @@ abstract class ClassMixer {
                     continue;
                 }
 
-                //Disallow private and protected properties
-                if ($prop->isProtected() || $prop->isPrivate()) {
+                //Don't copy over statics. In mixed class, need to fully qualify the
+                //   parent class when using statics
+                if ($prop->isStatic()) {
                     continue;
                 }
 
-                //Check if it is a static property
-                $defvar = $prop->isStatic() ? 'static' : 'var';
-
                 //Create the property
                 if (is_null($prop_value)) {
-                    $props_arr[$prop_name] = "$defvar \$$prop_name;";
+                    $props_arr[$prop_name] = "var \$$prop_name;";
                 }
                 else {
-                    $props_arr[$prop_name] = "$defvar \$$prop_name = ".var_export($prop_value, true).";";
+                    $props_arr[$prop_name] = "var \$$prop_name = ".var_export($prop_value, true).";";
+                }
+
+                //Mark previously private and protected variables. Copying them over
+                //   as private is necessary so that they are accessible in the 'parent'
+                //   mixin class.
+                if ($prop->isProtected()) {
+                    $props_arr[$prop_name] .= ' //was protected';
+                }
+                elseif($prop->isPrivate()) {
+                    $props_arr[$prop_name] .= ' //was private';
                 }
             }
         }
