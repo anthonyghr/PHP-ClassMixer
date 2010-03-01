@@ -345,14 +345,15 @@ abstract class ClassMixer {
 
             //Create the property definitions
             foreach($props as $prop){
-                //Get the property name and value
+                //Get the property name
                 $prop_name = $prop->getName();
-                $prop_value = $prop_defaults[$prop_name];
-
                 //If it is already created, skip...
                 if (isset($props_arr[$prop_name])) {
                     continue;
                 }
+
+                //Get the property value
+                $prop_value = $prop_defaults[$prop_name];
 
                 //Don't copy over statics. In mixed class, need to fully qualify the
                 //   parent class when using statics
@@ -538,26 +539,27 @@ abstract class ClassMixer {
      * @return string String of variable definitions
      */
     private static function form_class_variables4($mixins) {
-        $pub_vars = array();
+        $props_arr = array();
+        $props_arr['__mixer_var'] = 'static $__mixer_var;';
         foreach ($mixins as $mixin) {
             foreach(get_class_vars($mixin) as $pub_var => $val) {
                 //Already created, continue...
-                if (isset($pub_vars[$pub_var])) {
+                if (isset($props_arr[$pub_var])) {
                     continue;
                 }
                 //Create the class variable
                 if (is_null($val)) {
                     //No associated value, just add the class variable.
-                    $pub_vars[$pub_var] = "var \$$pub_var;";
+                    $props_arr[$pub_var] = "var \$$pub_var;";
                 }
                 else {
                     //There is an associated value, define the class variable and copy the value.
-                    $pub_vars[$pub_var] = "var \$$pub_var = ".var_export($val, true).";";
+                    $props_arr[$pub_var] = "var \$$pub_var = ".var_export($val, true).";";
                 }
             }
         }
         //Return the string of variables
-        return implode("\n\t", $pub_vars);
+        return implode("\n\t", $props_arr);
     }
 
     /***************************************************************************
@@ -676,8 +678,10 @@ abstract class ClassMixer {
      * @return string String of variable definitions
      */
     private static function form_class_variables($mixins) {
-        $php5_available = CM_Utils::php_min_version('5');
-        if ($php5_available) {
+        //Needs PHP 5.2 to use the new Reflection API, as it looks
+        //    like the getDefaultProperties method was buggy in 5.1
+        $php5_2_available = CM_Utils::php_min_version('5.2');
+        if ($php5_2_available) {
             return self::form_class_variables5($mixins);
         }
         else {
