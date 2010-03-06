@@ -347,18 +347,25 @@ abstract class ClassMixer {
             foreach($props as $prop){
                 //Get the property name
                 $prop_name = $prop->getName();
+
                 //If it is already created, skip...
                 if (isset($props_arr[$prop_name])) {
                     continue;
                 }
 
-                //Get the property value
-                $prop_value = $prop_defaults[$prop_name];
-
                 //Don't copy over statics. In mixed class, need to fully qualify the
-                //   parent class when using statics
+                //   parent class when using statics. Besides, the reflection API
+                //   has a bug that does not copy statics well.
                 if ($prop->isStatic()) {
                     continue;
+                }
+
+                //Get the property value
+                if (isset($prop_defaults[$prop_name])) {
+                    $prop_value = $prop_defaults[$prop_name];
+                }
+                else {
+                    $prop_value = null;
                 }
 
                 //Create the property
@@ -678,10 +685,8 @@ abstract class ClassMixer {
      * @return string String of variable definitions
      */
     private static function form_class_variables($mixins) {
-        //Needs PHP 5.2 to use the new Reflection API, as it looks
-        //    like the getDefaultProperties method was buggy in 5.1
-        $php5_2_available = CM_Utils::php_min_version('5.2');
-        if ($php5_2_available) {
+        $php5_available = CM_Utils::php_min_version('5');
+        if ($php5_available) {
             return self::form_class_variables5($mixins);
         }
         else {
