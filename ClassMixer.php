@@ -242,8 +242,8 @@ abstract class ClassMixer {
      * @param string $method
      * @param array $bases
      * @param array $combinators
-     * @param array $before_cutpoint
-     * @param array $after_cutpoint
+     * @param boolean $before_cutpoint
+     * @param boolean $after_cutpoint
      * @return string Generated code for a method of the mixed class.
      */
     private static function form_class_method5($new_class, $method, $bases, $combinators=array(),
@@ -255,15 +255,21 @@ abstract class ClassMixer {
                                             $before_cutpoint, $after_cutpoint);
         }
 
+        //Get the combinator info
+        list($combinator_name, $ordered_bases, $method_name, $method_modifiers) =
+                self::parse_combinator_info($method, $bases, $combinators);
+
         //Get the method parameter list (this assumes that all the methods to be
         //   combined have the same signature!)
         $b = $bases[0];
         $reflect_method = new ReflectionMethod($b, $method);
 
-        //Get the access modifiers
-        $is_protected = $reflect_method->isProtected() ? 'protected' : '';
-        $is_static = $reflect_method->isStatic() ? 'static' : '';
-        $method_modifiers = $is_protected.' '.$is_static;
+        //Get the access modifiers, if the have not been given
+        if (is_null($method_modifiers)) {
+            $is_protected = $reflect_method->isProtected() ? 'protected' : '';
+            $is_static = $reflect_method->isStatic() ? 'static' : '';
+            $method_modifiers = $is_protected.' '.$is_static;
+        }
 
         //Get the return type (by value or reference)
         $return_type = $reflect_method->returnsReference() ? '&' : '';
@@ -274,7 +280,7 @@ abstract class ClassMixer {
         $args_params = $args[1];
 
         //Form the method signature
-        $method_signature = "$method_modifiers function$return_type $method($args_signature)";
+        $method_signature = "$method_modifiers function$return_type $method_name($args_signature)";
 
         //Create the before and after method calls, if any
         $is_method_cutpoint = self::is_method_cutpoint($method);
@@ -282,9 +288,6 @@ abstract class ClassMixer {
                             self::form_before_cutpoint_call5($new_class, $method, $args_params) : '';
         $after_code = ($after_cutpoint && !$is_method_cutpoint) ?
                             self::form_after_cutpoint_call5($new_class, $method, $args_params) : '';
-
-	//Get the combinator info
-        list($combinator_name, $ordered_bases) = self::parse_combinator_info($method, $bases, $combinators);            
 
         $func_code = '';
         //By default, if no combinators, just execute the method call of the first base.
@@ -328,6 +331,70 @@ abstract class ClassMixer {
         return $func_code;
     }
 
+    /**
+     * Generate a string with the variable definitions for the class
+     *
+     * @param array $mixins
+     * @return string String of variable definitions
+     */
+    private static function form_class_variables5($mixins) {
+        $props_arr = array();
+        $props_arr['__mixer_var'] = 'static $__mixer_var;';
+        foreach ($mixins as $mixin) {
+            //Get the property array
+            $mixin_ref = new ReflectionClass($mixin);
+            $props = $mixin_ref->getProperties();
+            $prop_defaults = $mixin_ref->getDefaultProperties();
+
+            //Create the property definitions
+            foreach($props as $prop){
+                //Get the property name
+                $prop_name = $prop->getName();
+
+                //If it is already created, skip...
+                if (isset($props_arr[$prop_name])) {
+                    continue;
+                }
+
+                //Don't copy over statics. In mixed class, need to fully qualify the
+                //   parent class when using statics. Besides, the reflection API
+                //   has a bug that does not copy statics well.
+                if ($prop->isStatic()) {
+                    continue;
+                }
+
+                //Get the property value
+                if (isset($prop_defaults[$prop_name])) {
+                    $prop_value = $prop_defaults[$prop_name];
+                }
+                else {
+                    $prop_value = null;
+                }
+
+                //Create the property
+                if (is_null($prop_value)) {
+                    $props_arr[$prop_name] = "var \$$prop_name;";
+                }
+                else {
+                    $props_arr[$prop_name] = "var \$$prop_name = ".var_export($prop_value, true).";";
+                }
+
+                //Mark previously private and protected variables. Copying them over
+                //   as private is necessary so that they are accessible in the 'parent'
+                //   mixin class.
+                if ($prop->isProtected()) {
+                    $props_arr[$prop_name] .= ' //was protected';
+                }
+                elseif($prop->isPrivate()) {
+                    $props_arr[$prop_name] .= ' //was private';
+                }
+            }
+        }
+        
+        //Return the string of variables
+        return implode("\n\t", $props_arr);
+    }
+
     /***************************************************************************
      * PHP 4.2+ mixed method creation routines.
      **************************************************************************/
@@ -350,13 +417,8 @@ abstract class ClassMixer {
                 }
                 if (in_array('BEFORE_$method', get_class_methods('$new_class'))) {
                     \$ret = null;
-                    $new_class::\$__mixer_var =& \$ret;
 
                     eval('$new_class::BEFORE_$method('.\$arg_str.');');
-
-                    if (!is_null($new_class::\$__mixer_var)) {
-                        return $new_class::\$__mixer_var;
-                    }
                 }
                 ";
         return $cutpoint_code;
@@ -366,20 +428,16 @@ abstract class ClassMixer {
      * Generates code to be inserted in a generated method of the mixed class
      * that calls the AFTER cutpoint of this generated method, if any.
      *
-     * @param <type> $new_class
-     * @param <type> $method
-     * @return <type>
+     * @param string $new_class
+     * @param string $method
+     * @return string
      */
     private static function form_after_cutpoint_call4($new_class, $method) {
         $cutpoint_code = "
                 //Do after method call
                 \$has_args = (strlen(\$arg_str) > 0);
                 if (in_array('AFTER_$method', get_class_methods('$new_class'))) {
-                    $new_class::\$__mixer_var =& \$ret;
-
                     eval('$new_class::AFTER_$method('.\$arg_str.');');
-
-                    \$ret =& $new_class::\$__mixer_var;
                 }
                 if (in_array('AFTER_ALL', get_class_methods('$new_class'))) {
                     \$aa_arg_str = \$has_args ?
@@ -395,8 +453,8 @@ abstract class ClassMixer {
      * Form a string with the argument list for the methods called in mixer functions.
      * Needs to be public, because it is called from the mixed method.
      *
-     * @param <type> $args
-     * @return <type>
+     * @param array $args
+     * @return string
      */
     public static function form_method_argument_list4($args) {
         $argStrArr = array();
@@ -415,13 +473,13 @@ abstract class ClassMixer {
      * Methods that accept reference variables are problematic. The mixed method loses
      * the reference, passing all arguments by value.
      *
-     * @param <type> $new_class
-     * @param <type> $method
-     * @param <type> $bases
-     * @param <type> $combinators
-     * @param <type> $before_cutpoint
-     * @param <type> $after_cutpoint
-     * @return <type>
+     * @param string $new_class
+     * @param string $method
+     * @param array $bases
+     * @param array $combinators
+     * @param boolean $before_cutpoint
+     * @param boolean $after_cutpoint
+     * @return string Generated code for a method of the mixed class.
      */
     private static function form_class_method4($new_class, $method, $bases, $combinators=array(),
                                                $before_cutpoint=false, $after_cutpoint=false) {
@@ -433,7 +491,7 @@ abstract class ClassMixer {
                             self::form_after_cutpoint_call4($new_class, $method) : '';
 
         //Get the combinator information
-        list($combinator_name, $ordered_bases) = self::parse_combinator_info($method, $bases, $combinators);
+        list($combinator_name, $ordered_bases, $method_name) = self::parse_combinator_info($method, $bases, $combinators);
 
         $func_code = '';
         //By default, if no combinators, just execute the method call of the first base.
@@ -441,7 +499,7 @@ abstract class ClassMixer {
             $b = $ordered_bases[0];
 
             $func_code = "
-            function& $method() {
+            function& $method_name() {
                 //Get arguments for the method
                 \$args = func_get_args();
                 \$arg_str = ClassMixer::form_method_argument_list4(\$args);
@@ -465,7 +523,7 @@ abstract class ClassMixer {
             $func_str = implode(', ', $func_array);
 
             $func_code = "
-            function& $method() {
+            function& $method_name() {
                 //Get arguments for the method
                 \$args = func_get_args();
                 \$arg_str = ClassMixer::form_method_argument_list4(\$args);
@@ -482,6 +540,36 @@ abstract class ClassMixer {
             }";
         }
         return $func_code;
+    }
+
+    /**
+     * Generate a string with the variable definitions for the class
+     *
+     * @param array $mixins
+     * @return string String of variable definitions
+     */
+    private static function form_class_variables4($mixins) {
+        $props_arr = array();
+        $props_arr['__mixer_var'] = 'static $__mixer_var;';
+        foreach ($mixins as $mixin) {
+            foreach(get_class_vars($mixin) as $pub_var => $val) {
+                //Already created, continue...
+                if (isset($props_arr[$pub_var])) {
+                    continue;
+                }
+                //Create the class variable
+                if (is_null($val)) {
+                    //No associated value, just add the class variable.
+                    $props_arr[$pub_var] = "var \$$pub_var;";
+                }
+                else {
+                    //There is an associated value, define the class variable and copy the value.
+                    $props_arr[$pub_var] = "var \$$pub_var = ".var_export($val, true).";";
+                }
+            }
+        }
+        //Return the string of variables
+        return implode("\n\t", $props_arr);
     }
 
     /***************************************************************************
@@ -522,18 +610,47 @@ abstract class ClassMixer {
         if (isset($combinators[$method])) {
             $combinator_info = $combinators[$method];
             if (is_array($combinator_info)) {
-                $combinator_name = $combinator_info[0];
-                $combinator_bases = $combinator_info[1];
-                $ordered_bases = array_intersect($combinator_bases, $bases);
+                //Obtain the format of our combinator array
+                $size = sizeof($combinator_info);
+                
+                //(1) Get the name of the combinator function. If none, set it to null
+                $combinator_name = isset($combinator_info[0]) ? $combinator_info[0] : null;
+                
+                //(2) Get the override parent bases to combine, if any
+                if ($size > 1 && isset($combinator_info[1])) {
+                    $combinator_bases = $combinator_info[1];
+                    $ordered_bases = array_intersect($combinator_bases, $bases);
+                }
+                else {
+                    $ordered_bases = $bases;
+                }
+                
+                //(3) Get the override method name, if any
+                if ($size > 2 && isset($combinator_info[2])) {
+                    $method_name = $combinator_info[2];
+                }
+                else {
+                    $method_name = $method;
+                }
+
+                //(4) Get the override method modifiers, if any
+                if ($size > 3 && isset($combinator_info[3])) {
+                    $method_modifiers = $combinator_info[3];
+                }
+                else {
+                    $method_modifiers = null;
+                }
             }
             else {
                 $combinator_name = $combinator_info;
                 $ordered_bases = $bases;
+                $method_name = $method;
+                $method_modifiers = null;
             }
-            return array($combinator_name, $ordered_bases);
+            return array($combinator_name, $ordered_bases, $method_name, $method_modifiers);
         }
-        //No combinator, just return the bases
-        return array(null, $bases);
+        //No combinator, just return the bases and the combinator name
+        return array(null, $bases, $method, $method_modifiers);
     }
 
     /**
@@ -593,6 +710,22 @@ abstract class ClassMixer {
         }
     }
 
+    /**
+     * Generate a string with the variable definitions for the class
+     *
+     * @param array $mixins
+     * @return string String of variable definitions
+     */
+    private static function form_class_variables($mixins) {
+        $php5_available = CM_Utils::php_min_version('5');
+        if ($php5_available) {
+            return self::form_class_variables5($mixins);
+        }
+        else {
+            return self::form_class_variables4($mixins);
+        }
+    }
+
     /***************************************************************************
      * Mixed class creation routines.
      **************************************************************************/
@@ -642,27 +775,8 @@ abstract class ClassMixer {
             $class_header .= " implements $str_interfaces";
         }
 
-        //Add the mixin variables (unfortunately PHP instrospection only gets public vars...)
-        $pub_vars = array();
-        $pub_vars['__mixer_var'] = 'static $__mixer_var;';
-        foreach ($mixins as $mixin) {
-            foreach(get_class_vars($mixin) as $pub_var => $val) {
-                //Already created, continue...
-                if (isset($pub_vars[$pub_var])) {
-                    continue;
-                }
-                //Create the class variable
-                if (is_null($val)) {
-                    //No associated value, just add the class variable.
-                    $pub_vars[$pub_var] = "var \$$pub_var;";
-                }
-                else {
-                    //There is an associated value, define the class variable and copy the value.
-                    $pub_vars[$pub_var] = "var \$$pub_var = ".var_export($val, true).";";
-                }
-            }
-        }
-        $str_var_code = implode("\n\t", $pub_vars);
+        //Add the mixin variables 
+        $str_var_code = self::form_class_variables($mixins);
 
         //Get the functions
         $funcs = array();
