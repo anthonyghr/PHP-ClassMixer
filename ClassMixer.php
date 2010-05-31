@@ -597,12 +597,19 @@ abstract class ClassMixer {
 
     /**
      * Obtain the combinator information for a mixed method.
-     * A simple combinator just specifies the combinator method to use
-     * A complex combinator contains an array specifying the combinator method plus
-     *    which base classes to combine in what order
+     * The combinator information can take two formats:
+     * 1) A simple combinator that just specifies the combinator method to use, as a string
+     * 2) A complex combinator that contains an array in the format
+     *    array('combinator_name', //The name of the combinator method to use,
+     *          array(*parents*),  //An array with the names of which base classes to combine
+     *          'method_name',     //The name of the method in the mixed class
+     *          'method_modifiers' //The method modifiers of the method in the mixed class
+     *          )
+     *    All of these parameters are optional. An undesired parameter can be set to null.
      *
      * @param string $method
      * @param array $bases
+     * @param array $combinators
      * @return array Two-element array with the combinator method and the ordered list of bases
      */
     private static function parse_combinator_info($method, $bases, $combinators) {
