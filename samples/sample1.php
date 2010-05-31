@@ -70,3 +70,8 @@ echo "I'm a ".Person::kind();
 echo "\n";
 echo $p->greet('you');
 echo "\n";
+
+//---Resulting Output---
+//Hi, my name is Joe Doe
+//I'm a Lawyer
+//I'm going to sue you!

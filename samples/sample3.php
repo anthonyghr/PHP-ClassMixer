@@ -111,3 +111,8 @@ echo $p->hobby();
 echo "\n";
 echo $p->anti_hobby();
 echo "\n";
+
+//---Resulting Output---
+//Hi, my name is Joe Doe
+//I like to breath and I like to hack and I like to ski
+//I don't like germs

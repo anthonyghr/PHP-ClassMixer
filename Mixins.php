@@ -176,6 +176,35 @@ abstract class ExpandableClassMixin {
     }
 
     /**
+     * Checks if a class has the method dynamically added
+     * 
+     * @param <type> $object_or_klass
+     * @param <type> $method
+     * @return <type>
+     */
+    public static function dynamic_method_exists($object_or_klass, $method) {
+        $klasses = self::getClassHierarchy($object_or_klass);
+        foreach ($klasses as $klass) {
+            //Check if this is a dynamically added method
+            if (self::isMethodRegistered($klass, $method)) {
+                return true;
+            }
+            
+            //Get the expanders for the class
+            $expanders = self::getExpanders($klass);
+            foreach ($expanders as $expander) {
+                //Get the methods of the expander class
+                $methods = get_class_methods($expander);
+                //Found the method! 
+                if (in_array($method, $methods)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
      * Here look for expander classes that may define the method called on the object
      * 
      * @param <type> $method

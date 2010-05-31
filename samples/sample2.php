@@ -67,3 +67,8 @@ echo "\n";
 $p->favorite_language = 'PHP';
 echo $p->my_language_rules();
 echo "\n";
+
+//---Resulting Output---
+//Hi, my name is Joe Doe
+//C++ rules, all others drool!
+//PHP rules, all others drool!
