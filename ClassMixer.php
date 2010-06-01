@@ -657,7 +657,7 @@ abstract class ClassMixer {
             return array($combinator_name, $ordered_bases, $method_name, $method_modifiers);
         }
         //No combinator, just return the bases and the combinator name
-        return array(null, $bases, $method, $method_modifiers);
+        return array(null, $bases, $method, null);
     }
 
     /**
