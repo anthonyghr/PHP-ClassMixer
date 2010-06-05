@@ -20,11 +20,13 @@
  *
  * Sample4:
  * This fourth example demonstrates a more advanced usage of combinators
- * Notice how defining a combinator (and_concat) combinator for the hobby method
- *    causes the hobby methods on all the three parent classes to be executed.
- * Notice that when no combinator is defined for the anti_hobby method, ClassMixer
- *    only executes the method of the first parent class that defines it (the parent
- *    BasePerson class in this case)
+ * Notice how the combinator information for the 'hobby' and 'anti-hobby'
+ *     methods are now arrays.
+ *     1) The first member of the array is the combinator function to use.
+ *     2) The second member of the array is an array of parent classes.
+ *        This array specifies which parent classes to use when generating
+ *        the method of the final class, and in what order to call the parent
+ *        methods.
  ******************************************************************************/
 
 require_once('../ClassMixer.php');

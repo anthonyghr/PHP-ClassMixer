@@ -18,8 +18,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  *
- * Sample5:
- * This sixt example demonstrates how we can sellect which methods
+ * Sample6:
+ * This sixth example demonstrates how we can select which methods
  *    allow 'cutpoints'.
  * Notice that the two cutpoint parameters to the
  *    ClassMixer are now arrays containing the name of methods of the
