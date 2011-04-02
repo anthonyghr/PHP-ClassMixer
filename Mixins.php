@@ -131,7 +131,7 @@ abstract class ExpandableClassMixin {
      * @param <type> $klass
      * @return <type>
      */
-    protected static function getExpanders($klass) {
+    public static function getExpanders($klass) {
         if (!array_key_exists($klass, self::$dynamic_mixins)) {
             self::$dynamic_mixins[$klass] = array();
         }
@@ -145,7 +145,7 @@ abstract class ExpandableClassMixin {
      * @param <type> $expander
      * @return <type>
      */
-    protected static function isExpanderRegistered($klass, $expander) {
+    public static function isExpanderRegistered($klass, $expander) {
         return in_array($expander, self::getExpanders($klass));
     }
 
