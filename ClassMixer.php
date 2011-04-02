@@ -213,6 +213,9 @@ abstract class ClassMixer {
 
             //Get the signature of the parameter to form the method signature
             $arg = '';
+            $type_hint_class = $p->getClass();
+            $type_hint = !is_null($type_hint_class) ? $type_hint_class->getName().' ' : '';
+            $arg .= $type_hint;
             $ref = $p->isPassedByReference() ? '&' : '';
             $arg .= $ref;
             $arg .= '$'.$param_name;
@@ -261,7 +264,7 @@ abstract class ClassMixer {
 
         //Get the method parameter list (this assumes that all the methods to be
         //   combined have the same signature!)
-        $b = $bases[0];
+        $b = $ordered_bases[0];
         $reflect_method = new ReflectionMethod($b, $method);
 
         //Get the access modifiers, if the have not been given
@@ -896,13 +899,12 @@ abstract class ClassMixer {
                                                $new_class, $base, $mixins, $combinators=array(),
                                                $before_cutpoints=array(), $after_cutpoints=array()) {
         try {
-            //Ensure we have a full path
-            $mixed_class_file = realpath($mixed_class_file);
+            //Check if we should write the file
             if ($rewrite || !file_exists($mixed_class_file)) {
                 //Try to open the file for writing
-                $fh = fopen($mixed_class_file, 'w');
+                $fh = @fopen($mixed_class_file, 'w');
                 if ($fh === false) {
-                    throw Exception('ClassMixer could not write the cached class');
+                    throw new Exception('ClassMixer could not write the cached class');
                 }
 
                 //Data to save to the file
