@@ -109,6 +109,32 @@ abstract class CM_Combinators {
         }
         return null;
     }
+
+    /**
+     * Aggregate the returns of the combined result values using OR
+     * 
+     * @return boolean 
+     */
+    public static function boolean_or() {
+        $args = func_get_args();
+        if (!empty($args)) {
+            return array_reduce(create_function('$a, $b', 'return (is_null($a) ? false : $a) || $b;'), $args);
+        }
+        return null;
+    }
+
+    /**
+     * Aggregate the returns of the combined result values using AND
+     * 
+     * @return boolean 
+     */
+    public static function boolean_and() {
+        $args = func_get_args();
+        if (!empty($args)) {
+            return array_reduce(create_function('$a, $b', 'return (is_null($a) ? false : $a) && $b;'), $args);
+        }
+        return null;
+    }
 }
 
 
@@ -267,7 +293,7 @@ abstract class ClassMixer {
         $b = $ordered_bases[0];
         $reflect_method = new ReflectionMethod($b, $method);
 
-        //Get the access modifiers, if the have not been given
+        //Get the access modifiers, if they have not been given
         if (is_null($method_modifiers)) {
             $is_protected = $reflect_method->isProtected() ? 'protected' : '';
             $is_static = $reflect_method->isStatic() ? 'static' : '';
@@ -376,10 +402,10 @@ abstract class ClassMixer {
 
                 //Create the property
                 if (is_null($prop_value)) {
-                    $props_arr[$prop_name] = "var \$$prop_name;";
+                    $props_arr[$prop_name] = "public \$$prop_name;";
                 }
                 else {
-                    $props_arr[$prop_name] = "var \$$prop_name = ".var_export($prop_value, true).";";
+                    $props_arr[$prop_name] = "public \$$prop_name = ".var_export($prop_value, true).";";
                 }
 
                 //Mark previously private and protected variables. Copying them over
