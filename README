@@ -49,5 +49,108 @@ Requirements
 To make use of the complete feature set of ClassMixer, PHP 5.0 or above must be installed on the system.
 However, ClassMixer is still functional with a limited set of features using PHP 4.2 or above.
 
+Examples
+========
 
+/******************************************************************************
+ * Example 1: Taken from sample4.php in the samples directory
+ *    The following example demonstrates how a base "BasePerson" class is mixed
+ *    with a mixin "ProgrammerMixin" to produce a "Person" class.
+ *    Notice the usage of combinators to tell ClassMixer how to combine
+ *    the methods in BasePerson and ProgrammerMixin.
+ ******************************************************************************/
 
+require_once(PATH_TO_CLASSMIXER . '/ClassMixer.php');
+
+/**
+ * Base class with common person information
+ */
+abstract class BasePerson {
+    private $first_name;
+    private $last_name;
+
+    function __construct($fname, $lname) {
+        $this->first_name = $fname;
+        $this->last_name = $lname;
+    }
+
+    function sayName() {
+        return "Hi, my name is $this->first_name $this->last_name";
+    }
+
+    function hobby() {
+        return "I like to breath";
+    }
+
+    function anti_hobby() {
+        return "I don't like germs";
+    }
+}
+
+/**
+ * Mixin class to add additional programmer-like methods to a person
+ */
+abstract class ProgrammerMixin {
+    function hobby() {
+        return "I like to hack";
+    }
+
+    function anti_hobby() {
+        return "I don't like bugs";
+    }
+}
+
+/**
+ * Mixin class to add additional skier-like methods to a person
+ */
+abstract class SkierMixin {
+    function hobby() {
+        return "I like to ski";
+    }
+}
+
+/**
+ * A combinator: This function (which expects string arguments)
+ *    concatenates all its arguments.
+ *
+ * @return <type>
+ */
+function and_concat() {
+    $args = func_get_args();
+    return implode(' and ', $args);
+}
+
+//Define that the ClassMixer should use the 'and_concat' combinator
+//   for merging the results of the 'hobby' and 'anti_hobby' methods
+//   in the parent classes.
+//   In addition, the parent classes to use, and the order in which they
+//   should be used is defined
+$combinators = array('hobby'      => array('and_concat',
+                                           array('ProgrammerMixin', 'SkierMixin')),
+                     'anti_hobby' => array('and_concat',
+                                           array('ProgrammerMixin')));
+
+//Create a mixed 'Person' class where ProgrammerMixin and SkierMixin
+//   have been added to BasePerson
+ClassMixer::create_mixed_class('Person', 'BasePerson',
+                               array('ProgrammerMixin',
+                                     'SkierMixin'),
+                               $combinators);
+
+//Show resulting functionality. When hobby is called, the 'hobby' methods
+//   on ProgrammerMixin and BasePerson are called, in that order (as specified
+//   in the array), and the results concatenated.
+//   Similarly, when anti_hobby is called, only the method on ProgrammerMixin
+//   is called
+$p = new Person('Joe', 'Doe');
+echo $p->sayName();
+echo "\n";
+echo $p->hobby();
+echo "\n";
+echo $p->anti_hobby();
+echo "\n";
+
+//---RESULTING OUTPUT---
+//Hi, my name is Joe Doe
+//I like to hack and I like to ski
+//I don't like bugs
