@@ -126,6 +126,15 @@ abstract class ExpandableClassMixin {
      * Dynamic mixin registration
      **************************************************************************/
     /**
+     * Get all of the expanders in the system
+     * 
+     * @return type 
+     */
+    public static function getExpanderRegistry() {
+        return self::$dynamic_mixins;
+    }
+    
+    /**
      * Get the expanders for a given class
      * 
      * @param <type> $klass
