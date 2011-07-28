@@ -109,6 +109,21 @@ abstract class CM_Combinators {
         }
         return null;
     }
+    
+    /**
+     * Return the first of the results that is not empty
+     * 
+     * @return type First non-empty result
+     */
+    public static function first_not_empty() {
+        $args = func_get_args();
+        foreach ($args as $arg) {
+            if (!empty($arg)) {
+                return $arg;
+            }
+        }
+        return null;
+    }
 
     /**
      * Aggregate the returns of the combined result values using OR
@@ -368,7 +383,8 @@ abstract class ClassMixer {
      */
     private static function form_class_variables5($mixins) {
         $props_arr = array();
-        $props_arr['__mixer_var'] = 'static $__mixer_var;';
+        $props_arr['__mixer_var'] = 'public static $__mixer_var;';
+        $props_arr['__mixer_mixins'] = 'public static $__mixer_mixins = '.var_export($mixins, true).';';
         foreach ($mixins as $mixin) {
             //Get the property array
             $mixin_ref = new ReflectionClass($mixin);
@@ -580,6 +596,7 @@ abstract class ClassMixer {
     private static function form_class_variables4($mixins) {
         $props_arr = array();
         $props_arr['__mixer_var'] = 'static $__mixer_var;';
+        $props_arr['__mixer_mixins'] = 'static $__mixer_mixins = '.var_export($mixins, true).';';
         foreach ($mixins as $mixin) {
             foreach(get_class_vars($mixin) as $pub_var => $val) {
                 //Already created, continue...
